@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-dmg:
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Stage app bundle
+        run: |
+          set -euo pipefail
+
+          APP_NAME="GardenWiFi"
+          BUILD_DIR=".build/release"
+          STAGE_DIR="dist"
+          APP_BUNDLE="$STAGE_DIR/$APP_NAME.app"
+
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+
+          cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+          cp Sources/Info.plist "$APP_BUNDLE/Contents/Info.plist"
+
+          RESOURCE_BUNDLE=$(find "$BUILD_DIR" -maxdepth 1 -name '*.bundle' -print -quit)
+          if [ -n "$RESOURCE_BUNDLE" ]; then
+            cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/"
+          fi
+
+          if [ -f "$BUILD_DIR/manuf.txt" ]; then
+            cp "$BUILD_DIR/manuf.txt" "$APP_BUNDLE/Contents/Resources/"
+          fi
+
+          chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+
+          APP_NAME="GardenWiFi"
+          STAGE_DIR="dist"
+          DMG_NAME="$APP_NAME.dmg"
+          DMG_ROOT="$STAGE_DIR/dmg-root"
+
+          rm -rf "$DMG_ROOT"
+          mkdir -p "$DMG_ROOT"
+          cp -R "$STAGE_DIR/$APP_NAME.app" "$DMG_ROOT/"
+          ln -s /Applications "$DMG_ROOT/Applications"
+
+          hdiutil create \
+            -volname "$APP_NAME" \
+            -srcfolder "$DMG_ROOT" \
+            -ov \
+            -format UDZO \
+            "$DMG_NAME"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GardenWiFi-dmg
+          path: GardenWiFi.dmg
+
+      - name: Attach DMG to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: GardenWiFi.dmg
