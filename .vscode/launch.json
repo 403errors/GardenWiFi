@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:GardenWiFi}",
+            "name": "Debug GardenWiFi",
+            "target": "GardenWiFi",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug GardenWiFi"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:GardenWiFi}",
+            "name": "Release GardenWiFi",
+            "target": "GardenWiFi",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release GardenWiFi"
+        }
+    ]
+}
